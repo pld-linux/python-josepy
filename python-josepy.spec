@@ -1,25 +1,38 @@
 #
 # Conditional build:
-%bcond_without	python2		# Python 2.x module
-%bcond_without	python3		# Python 3.x module
-#
+%bcond_without	doc	# Sphinx documentation
+%bcond_without	tests	# unit tests
+
 %define		module	josepy
 Summary:	JOSE protocol implementation
+Summary(pl.UTF-8):	Implementacja protokołu JOSE
 Name:		python-%{module}
-Version:	1.13.0
+# keep 1.6.x here for python2 support
+Version:	1.6.0
 Release:	1
+Epoch:		1
 License:	Apache v2.0
 Group:		Development/Languages/Python
 Source0:	https://files.pythonhosted.org/packages/source/j/josepy/josepy-%{version}.tar.gz
-# Source0-md5:	d0f8dc9ffbf3ce0bd9c40e5ec1bf3516
+# Source0-md5:	a1986b642c4381aab9635f1a4ce1a9be
 URL:		https://josepy.readthedocs.io/en/latest/
-%if %{with python2}
-BuildRequires:	python-devel >= 1:2.6
-BuildRequires:	python-setuptools
+BuildRequires:	python-devel >= 1:2.7
+BuildRequires:	python-setuptools >= 1.0
+%if %{with tests}
+BuildRequires:	python-cryptography >= 0.8
+BuildRequires:	python-mock
+BuildRequires:	python-pyOpenSSL >= 0.13
+BuildRequires:	python-pytest >= 2.8.0
+BuildRequires:	python-pytest-cov
+BuildRequires:	python-pytest-flake8 >= 0.5
+BuildRequires:	python-six >= 1.9.0
 %endif
-%if %{with python3}
-BuildRequires:	python3-devel >= 1:3.2
-BuildRequires:	python3-setuptools
+%if %{with doc}
+BuildRequires:	python-Sphinx >= 1.0
+BuildRequires:	python-cryptography >= 0.8
+BuildRequires:	python-pyOpenSSL >= 0.13
+BuildRequires:	python-six >= 1.9.0
+BuildRequires:	python-sphinx_rtd_theme
 %endif
 BuildArch:	noarch
 BuildRoot:	%{tmpdir}/%{name}-%{version}-root-%(id -u -n)
@@ -27,49 +40,58 @@ BuildRoot:	%{tmpdir}/%{name}-%{version}-root-%(id -u -n)
 %description
 This package provides JOSE protocol implementation.
 
-%package -n python3-%{module}
-Summary:	JOSE protocol implementation in Python 3
-Group:		Development/Languages/Python
+%description -l pl.UTF-8
+Ten pakiet zawiera implementację protokołu JOSE.
 
-%description -n python3-%{module}
-This package provides JOSE protocol implementation in Python 3.
+%package apidocs
+Summary:	API documentation for josepy module
+Summary(pl.UTF-8):	Dokumentacja API modułu josepy
+Group:		Documentation
+
+%description apidocs
+API documentation for josepy module.
+
+%description apidocs -l pl.UTF-8
+Dokumentacja API modułu josepy.
 
 %prep
 %setup -q -n %{module}-%{version}
 
 %build
-%if %{with python2}
 %py_build
+
+%if %{with tests}
+PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 \
+PYTEST_PLUGINS="pytest_cov.plugin,pytest_flake8" \
+PYTHONPATH=$(pwd)/src \
+%{__python} -m pytest src
 %endif
-%if %{with python3}
-%py3_build
+
+%if %{with doc}
+PYTHONPATH=$(pwd)/src \
+%{__make} -C docs html \
+	SPHINXBUILD="%{__python} -m sphinx"
 %endif
 
 %install
 rm -rf $RPM_BUILD_ROOT
 
-%if %{with python3}
-%py3_install
-%endif
-
-%if %{with python2}
 %py_install
-%endif
+
+%py_postclean
+
+%{__mv} $RPM_BUILD_ROOT%{_bindir}/jws{,-2}
 
 %clean
 rm -rf $RPM_BUILD_ROOT
 
-%if %{with python2}
 %files
 %defattr(644,root,root,755)
-%attr(755,root,root) %{_bindir}/jws
-%{py_sitescriptdir}/josepy-*-py*.egg-info
+%doc CHANGELOG.rst README.rst
+%attr(755,root,root) %{_bindir}/jws-2
 %{py_sitescriptdir}/josepy
-%endif
+%{py_sitescriptdir}/josepy-%{version}-py*.egg-info
 
-%if %{with python3}
-%files -n python3-%{module}
+%files apidocs
 %defattr(644,root,root,755)
-%{py3_sitescriptdir}/josepy-*-py*.egg-info
-%{py3_sitescriptdir}/josepy
-%endif
+%doc docs/_build/html/{_static,api,man,*.html,*.js}
