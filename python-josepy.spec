@@ -81,6 +81,9 @@ rm -rf $RPM_BUILD_ROOT
 %py_postclean
 
 %{__mv} $RPM_BUILD_ROOT%{_bindir}/jws{,-2}
+# remove tests
+%{__rm} $RPM_BUILD_ROOT%{py_sitescriptdir}/josepy/{test_util,*_test}.py[co]
+%{__rm} -r $RPM_BUILD_ROOT%{py_sitescriptdir}/josepy/testdata
 
 %clean
 rm -rf $RPM_BUILD_ROOT
